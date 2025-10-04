@@ -76,81 +76,83 @@ let pool: any;
 let db: PGlite;
 
 async function initializeDatabase() {
-  const isDevelopment = !process.env.DATABASE_URL && process.env.NODE_ENV === 'development';
+  // Try PostgreSQL first if DATABASE_URL or production database config is available
+  const hasPostgresConfig = DATABASE_URL || (PGHOST && PGDATABASE && PGUSER && PGPASSWORD);
   
-  if (isDevelopment) {
-    console.log('Using PGlite for development...');
-    db = new PGlite();
-    
-    // Initialize tables
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-          user_id VARCHAR PRIMARY KEY,
-          email VARCHAR NOT NULL UNIQUE,
-          password_hash VARCHAR NOT NULL,
-          name VARCHAR NOT NULL,
-          created_at VARCHAR NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS tasks (
-          task_id VARCHAR PRIMARY KEY,
-          user_id VARCHAR NOT NULL,
-          task_name VARCHAR NOT NULL,
-          due_date VARCHAR,
-          is_complete BOOLEAN NOT NULL DEFAULT FALSE,
-          FOREIGN KEY (user_id) REFERENCES users(user_id)
-      );
-
-      CREATE TABLE IF NOT EXISTS auth_tokens (
-          token_id VARCHAR PRIMARY KEY,
-          user_id VARCHAR NOT NULL,
-          auth_token VARCHAR NOT NULL UNIQUE,
-          created_at VARCHAR NOT NULL,
-          FOREIGN KEY (user_id) REFERENCES users(user_id)
-      );
-
-      CREATE TABLE IF NOT EXISTS search_filters (
-          filter_id VARCHAR PRIMARY KEY,
-          user_id VARCHAR NOT NULL,
-          search_query VARCHAR,
-          filter_status VARCHAR DEFAULT 'incomplete',
-          created_at VARCHAR NOT NULL,
-          FOREIGN KEY (user_id) REFERENCES users(user_id)
-      );
-    `);
-
-    pool = {
-      query: async (text: string, params?: any[]) => {
-        return await db.query(text, params);
-      }
-    };
-    console.log('Database initialized with PGlite');
-  } else {
-    console.log('Using PostgreSQL for production...');
-    pool = new Pool(
-      DATABASE_URL
-        ? { 
-            connectionString: DATABASE_URL, 
-            ssl: { rejectUnauthorized: false } 
-          }
-        : {
-            host: PGHOST,
-            database: PGDATABASE,
-            user: PGUSER,
-            password: PGPASSWORD,
-            port: Number(PGPORT),
-            ssl: { rejectUnauthorized: false },
-          }
-    );
-    
+  if (hasPostgresConfig) {
+    console.log('Attempting PostgreSQL connection...');
     try {
+      pool = new Pool(
+        DATABASE_URL
+          ? { 
+              connectionString: DATABASE_URL, 
+              ssl: { rejectUnauthorized: false } 
+            }
+          : {
+              host: PGHOST,
+              database: PGDATABASE,
+              user: PGUSER,
+              password: PGPASSWORD,
+              port: Number(PGPORT),
+              ssl: { rejectUnauthorized: false },
+            }
+      );
+      
       await pool.query('SELECT NOW()');
-      console.log('Database connection successful');
+      console.log('PostgreSQL connection successful');
+      return;
     } catch (error) {
-      console.error('Database connection failed:', error);
-      throw error;
+      console.error('PostgreSQL connection failed, falling back to PGlite:', error);
     }
   }
+
+  // Fall back to PGlite if PostgreSQL is not available or connection failed
+  console.log('Using PGlite as database...');
+  db = new PGlite();
+  
+  // Initialize tables
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+        user_id VARCHAR PRIMARY KEY,
+        email VARCHAR NOT NULL UNIQUE,
+        password_hash VARCHAR NOT NULL,
+        name VARCHAR NOT NULL,
+        created_at VARCHAR NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS tasks (
+        task_id VARCHAR PRIMARY KEY,
+        user_id VARCHAR NOT NULL,
+        task_name VARCHAR NOT NULL,
+        due_date VARCHAR,
+        is_complete BOOLEAN NOT NULL DEFAULT FALSE,
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_tokens (
+        token_id VARCHAR PRIMARY KEY,
+        user_id VARCHAR NOT NULL,
+        auth_token VARCHAR NOT NULL UNIQUE,
+        created_at VARCHAR NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS search_filters (
+        filter_id VARCHAR PRIMARY KEY,
+        user_id VARCHAR NOT NULL,
+        search_query VARCHAR,
+        filter_status VARCHAR DEFAULT 'incomplete',
+        created_at VARCHAR NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+    );
+  `);
+
+  pool = {
+    query: async (text: string, params?: any[]) => {
+      return await db.query(text, params);
+    }
+  };
+  console.log('Database initialized with PGlite');
 }
 
 const app = express();
@@ -727,12 +729,16 @@ app.use((err, req, res, next) => {
   res.status(500).json(createErrorResponse('Internal server error', err, 'UNHANDLED_ERROR'));
 });
 
-// Serve static files from Vite build
-app.use(express.static(path.join(__dirname, '..', 'vitereact', 'public')));
+// Serve static files from Vite build or local public directory
+const frontendPath = process.env.NODE_ENV === 'production' 
+  ? path.join(__dirname, '..', 'public')  // Production: serve from backend/public (from dist/ go up to backend/ then down to public/)
+  : path.join(__dirname, '..', 'vitereact', 'public'); // Development: serve from vitereact/public
+
+app.use(express.static(frontendPath));
 
 // Catch-all route for SPA routing - serve index.html for non-API routes only
 app.get(/^(?!\/api).*/, (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'vitereact', 'public', 'index.html'));
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 export { app, pool };

@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, pool } from './server.ts'; // Importing app and database pool
+import { app, pool } from './server.js'; // Importing app and database pool
 import {
   createUserInputSchema,
   createTaskInputSchema,
