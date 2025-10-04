@@ -646,9 +646,15 @@ export { app, pool };
 // Start the server
 async function startServer() {
     await initializeDatabase();
-    app.listen(Number(port), '0.0.0.0', () => {
+    const server = app.listen(Number(port), '0.0.0.0', () => {
         console.log(`TodoGenie server running on port ${port} and listening on 0.0.0.0`);
+        console.log(`Health check: http://localhost:${port}/api/health`);
+        console.log(`Frontend: http://localhost:${port}`);
     });
+    server.on('error', (error) => {
+        console.error('Server error:', error);
+    });
+    return server;
 }
 startServer();
 //# sourceMappingURL=server.js.map
