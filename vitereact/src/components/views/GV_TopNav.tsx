@@ -6,11 +6,11 @@ import axios from 'axios';
 const GV_TopNav: React.FC = () => {
   const isAuthenticated = useAppStore(state => state.authentication_state.authentication_status.is_authenticated);
   const currentUser = useAppStore(state => state.authentication_state.current_user);
+  const authToken = useAppStore(state => state.authentication_state.auth_token);
   const logoutUser = useAppStore(state => state.logout_user);
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    const authToken = useAppStore(state => state.authentication_state.auth_token);
     try {
       await axios.post(
         `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/auth/logout`,

@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/main';
 
 const GV_Footer: React.FC = () => {
   const isAuthenticated = useAppStore(state => state.authentication_state.authentication_status.is_authenticated);
+  const currentUserName = useAppStore(state => state.authentication_state.current_user?.name);
 
   return (
     <>
@@ -41,7 +42,7 @@ const GV_Footer: React.FC = () => {
             </div>
             {isAuthenticated ? (
               <div className="text-sm text-gray-600">
-                Logged in as: <span className="font-semibold">{useAppStore(state => state.authentication_state.current_user?.name)}</span>
+                Logged in as: <span className="font-semibold">{currentUserName}</span>
               </div>
             ) : (
               <div className="text-sm text-gray-600">

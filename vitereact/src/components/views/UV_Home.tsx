@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAppStore } from '@/store/main';
-import { Task, CreateTaskInput } from '@schema';
+import { Task, CreateTaskInput } from '@/schema';
 
 const UV_Home: React.FC = () => {
   const currentUser = useAppStore((state) => state.authentication_state.current_user);
@@ -32,45 +32,47 @@ const UV_Home: React.FC = () => {
     refetchOnWindowFocus: false
   });
 
-  const createTask = useMutation((newTask: CreateTaskInput) =>
-    axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/tasks`, newTask, {
-      headers: { Authorization: `Bearer ${authToken}` },
-    })
-  );
+  const createTask = useMutation({
+    mutationFn: (newTask: CreateTaskInput) =>
+      axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/tasks`, newTask, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+  });
 
-  const updateTask = useMutation(
-    (updatedTask: { task_id: string; is_complete: boolean }) =>
+  const updateTask = useMutation({
+    mutationFn: (updatedTask: { task_id: string; is_complete: boolean }) =>
       axios.patch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/tasks/${updatedTask.task_id}`, 
         { is_complete: updatedTask.is_complete },
         { headers: { Authorization: `Bearer ${authToken}` } }
       ),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['tasks']);
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
-  );
+  });
 
-  const deleteTask = useMutation(
-    (taskId: string) =>
+  const deleteTask = useMutation({
+    mutationFn: (taskId: string) =>
       axios.delete(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/tasks/${taskId}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['tasks']);
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
-  );
+  });
 
   const handleAddTask = () => {
     if (!taskName.trim()) return;
     
     createTask.mutate(
-      { task_name: taskName.trim(), due_date: dueDate || null, is_complete: false },
+      { 
+        task_name: taskName.trim(), 
+        due_date: dueDate ? new Date(dueDate) : null, 
+        is_complete: false, 
+        user_id: currentUser?.id || '' 
+      },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries(['tasks', currentUser?.id, searchQuery, filterStatus]);
+          queryClient.invalidateQueries({ queryKey: ['tasks', currentUser?.id, searchQuery, filterStatus] });
           setTaskName('');
           setDueDate('');
         },
@@ -100,10 +102,10 @@ const UV_Home: React.FC = () => {
               />
               <button
                 onClick={handleAddTask}
-                disabled={!taskName.trim() || createTask.isLoading}
+                disabled={!taskName.trim() || createTask.isPending}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium transition-all duration-200"
               >
-                {createTask.isLoading ? 'Adding...' : 'Add Task'}
+                {createTask.isPending ? 'Adding...' : 'Add Task'}
               </button>
             </div>
             <div>
@@ -141,7 +143,7 @@ const UV_Home: React.FC = () => {
                       <button 
                         onClick={() => updateTask.mutate({ task_id: task.task_id, is_complete: true })}
                         className="text-blue-600 hover:text-blue-800"
-                        disabled={updateTask.isLoading}
+                        disabled={updateTask.isPending}
                       >
                         Mark Complete
                       </button>
@@ -159,7 +161,7 @@ const UV_Home: React.FC = () => {
                         }
                       }}
                       className="text-red-600 hover:text-red-800"
-                      disabled={deleteTask.isLoading}
+                      disabled={deleteTask.isPending}
                     >
                       Delete
                     </button>

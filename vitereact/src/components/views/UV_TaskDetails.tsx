@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Task, updateTaskInputSchema } from '@schema';
+import { Task, updateTaskInputSchema } from '@/schema';
 import { useAppStore } from '@/store/main';
 
 const fetchTaskDetails = async (task_id: string, authToken: string | null) => {
@@ -24,24 +24,22 @@ const UV_TaskDetails: React.FC = () => {
   const [isComplete, setIsComplete] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const { data, error, isLoading } = useQuery<Task, Error>(
-    ['task', task_id],
-    () => fetchTaskDetails(task_id!, authToken),
-    {
-      enabled: !!task_id && !!authToken,
-    }
-  );
+  const { data, error, isLoading } = useQuery<Task, Error>({
+    queryKey: ['task', task_id],
+    queryFn: () => fetchTaskDetails(task_id!, authToken),
+    enabled: !!task_id && !!authToken,
+  });
 
   useEffect(() => {
     if (data) {
       setTaskName(data.task_name);
-      setDueDate(data.due_date || '');
+      setDueDate(data.due_date ? new Date(data.due_date).toISOString().split('T')[0] : '');
       setIsComplete(data.is_complete);
     }
   }, [data]);
 
-  const updateTaskMutation = useMutation(
-    async (values: { task_name: string; due_date: string; is_complete: boolean }) => {
+  const updateTaskMutation = useMutation({
+    mutationFn: async (values: { task_name: string; due_date: string; is_complete: boolean }) => {
       const validatedInput = updateTaskInputSchema.parse({
         task_id,
         task_name: values.task_name,
@@ -58,25 +56,21 @@ const UV_TaskDetails: React.FC = () => {
         }
       );
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['task', task_id]);
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task_id] });
+    },
+  });
 
-  const deleteTaskMutation = useMutation(
-    () => axios.delete(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/tasks/${task_id}`, {
+  const deleteTaskMutation = useMutation({
+    mutationFn: () => axios.delete(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/tasks/${task_id}`, {
       headers: {
         Authorization: `Bearer ${authToken}`,
       },
     }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['tasks']);
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
 
   const handleSave = async () => {
     try {
