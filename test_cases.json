@@ -1,0 +1,490 @@
+{
+  "project_name": "TodoGenie",
+  "generated_at": "2025-10-04T05:52:00Z",
+  "base_url": "https://123test-new.launchpulse.ai",
+  "total_test_cases": 28,
+  "testCases": [
+    {
+      "id": "auth-001",
+      "name": "User Registration Flow",
+      "category": "authentication",
+      "priority": "critical",
+      "description": "Verify new user can successfully register an account",
+      "preconditions": ["Navigate to application", "Should be redirected to /auth page"],
+      "steps": [
+        "Click 'Don't have an account? Sign up' link",
+        "Enter name: 'Test User'",
+        "Enter email: 'testuser@example.com'",
+        "Enter password: 'TestPassword123'",
+        "Click 'Create account' button",
+        "Wait for registration to complete"
+      ],
+      "expectedOutcome": "User is registered and automatically logged in, redirected to dashboard with welcome message",
+      "failureCondition": "Registration fails, error message displayed, or not redirected to dashboard"
+    },
+    {
+      "id": "auth-002",
+      "name": "User Login with Existing Credentials",
+      "category": "authentication",
+      "priority": "critical",
+      "description": "Verify existing user can log in with correct credentials",
+      "preconditions": ["Navigate to /auth page"],
+      "steps": [
+        "Enter email: 'user1@example.com'",
+        "Enter password: 'password123'",
+        "Click 'Sign in' button",
+        "Wait for authentication"
+      ],
+      "expectedOutcome": "User successfully logs in and is redirected to dashboard showing 'Welcome Alice Smith'",
+      "failureCondition": "Login fails or user not redirected to dashboard"
+    },
+    {
+      "id": "auth-003",
+      "name": "Login with Invalid Credentials",
+      "category": "authentication",
+      "priority": "high",
+      "description": "Verify appropriate error message for incorrect password",
+      "preconditions": ["Navigate to /auth page"],
+      "steps": [
+        "Enter email: 'user1@example.com'",
+        "Enter password: 'wrongpassword'",
+        "Click 'Sign in' button"
+      ],
+      "expectedOutcome": "Error message displayed: 'Invalid email or password'",
+      "failureCondition": "User is logged in or no error message shown"
+    },
+    {
+      "id": "auth-004",
+      "name": "Protected Route Access Without Authentication",
+      "category": "authentication",
+      "priority": "critical",
+      "description": "Verify unauthenticated users cannot access protected routes",
+      "preconditions": ["User is logged out"],
+      "steps": [
+        "Navigate directly to '/'",
+        "Observe redirect behavior"
+      ],
+      "expectedOutcome": "User is automatically redirected to /auth login page",
+      "failureCondition": "User can access dashboard without authentication"
+    },
+    {
+      "id": "auth-005",
+      "name": "Authentication Persistence After Page Reload",
+      "category": "authentication",
+      "priority": "high",
+      "description": "Verify user remains logged in after page refresh",
+      "preconditions": ["User is logged in"],
+      "steps": [
+        "Verify user is on dashboard",
+        "Refresh the page (F5 or browser reload)",
+        "Wait for page to load"
+      ],
+      "expectedOutcome": "User remains authenticated and stays on dashboard without redirect to login",
+      "failureCondition": "User is logged out or redirected to login page"
+    },
+    {
+      "id": "task-001",
+      "name": "Create New Task with Name Only",
+      "category": "task_management",
+      "priority": "critical",
+      "description": "Verify user can create a task with just a name",
+      "preconditions": ["User is logged in and on dashboard"],
+      "steps": [
+        "Enter task name: 'Test Task 1'",
+        "Click 'Add Task' button",
+        "Wait for task to be created"
+      ],
+      "expectedOutcome": "Task appears in task list with name 'Test Task 1' and 'No due date'",
+      "failureCondition": "Task is not created or not visible in list"
+    },
+    {
+      "id": "task-002",
+      "name": "Create Task with Name and Due Date",
+      "category": "task_management",
+      "priority": "critical",
+      "description": "Verify user can create a task with name and due date",
+      "preconditions": ["User is logged in and on dashboard"],
+      "steps": [
+        "Enter task name: 'Test Task with Date'",
+        "Select due date: tomorrow's date",
+        "Click 'Add Task' button",
+        "Wait for task to be created"
+      ],
+      "expectedOutcome": "Task appears in list with correct name and due date formatted",
+      "failureCondition": "Task not created or due date not displayed correctly"
+    },
+    {
+      "id": "task-003",
+      "name": "Mark Task as Complete",
+      "category": "task_management",
+      "priority": "critical",
+      "description": "Verify user can mark an incomplete task as complete",
+      "preconditions": ["User is logged in with at least one incomplete task"],
+      "steps": [
+        "Find an incomplete task in the list",
+        "Click 'Mark Complete' button on the task",
+        "Wait for update"
+      ],
+      "expectedOutcome": "Task shows '✓ Completed' status, text is struck through, background becomes gray",
+      "failureCondition": "Task status does not update or visual changes don't apply"
+    },
+    {
+      "id": "task-004",
+      "name": "Delete Task with Confirmation",
+      "category": "task_management",
+      "priority": "high",
+      "description": "Verify user can delete a task after confirmation",
+      "preconditions": ["User is logged in with at least one task"],
+      "steps": [
+        "Find a task in the list",
+        "Click 'Delete' button",
+        "Wait for confirmation dialog",
+        "Click 'OK' or 'Confirm' in dialog",
+        "Wait for deletion"
+      ],
+      "expectedOutcome": "Task is removed from the list",
+      "failureCondition": "Task remains in list or no confirmation dialog shown"
+    },
+    {
+      "id": "task-005",
+      "name": "Cancel Task Deletion",
+      "category": "task_management",
+      "priority": "medium",
+      "description": "Verify user can cancel task deletion",
+      "preconditions": ["User is logged in with at least one task"],
+      "steps": [
+        "Find a task in the list",
+        "Click 'Delete' button",
+        "Wait for confirmation dialog",
+        "Click 'Cancel' in dialog"
+      ],
+      "expectedOutcome": "Task remains in the list, dialog closes",
+      "failureCondition": "Task is deleted despite cancellation"
+    },
+    {
+      "id": "task-006",
+      "name": "Search Tasks by Name",
+      "category": "search_filter",
+      "priority": "high",
+      "description": "Verify search functionality filters tasks by name",
+      "preconditions": ["User is logged in with multiple tasks"],
+      "steps": [
+        "Note the current tasks displayed",
+        "Enter search term in 'Search tasks' field (e.g., 'project')",
+        "Wait for filtered results"
+      ],
+      "expectedOutcome": "Only tasks containing the search term in their name are displayed",
+      "failureCondition": "All tasks still shown or search doesn't filter correctly"
+    },
+    {
+      "id": "task-007",
+      "name": "Filter Tasks by Completion Status - Incomplete",
+      "category": "search_filter",
+      "priority": "high",
+      "description": "Verify incomplete filter shows only incomplete tasks",
+      "preconditions": ["User is logged in with both complete and incomplete tasks"],
+      "steps": [
+        "Select 'Incomplete Tasks' from status dropdown",
+        "Wait for filter to apply"
+      ],
+      "expectedOutcome": "Only incomplete tasks are displayed",
+      "failureCondition": "Complete tasks are still visible"
+    },
+    {
+      "id": "task-008",
+      "name": "Filter Tasks by Completion Status - Complete",
+      "category": "search_filter",
+      "priority": "high",
+      "description": "Verify complete filter shows only completed tasks",
+      "preconditions": ["User is logged in with at least one complete task"],
+      "steps": [
+        "Select 'Complete Tasks' from status dropdown",
+        "Wait for filter to apply"
+      ],
+      "expectedOutcome": "Only completed tasks are displayed with checkmarks",
+      "failureCondition": "Incomplete tasks are shown or no tasks displayed"
+    },
+    {
+      "id": "task-009",
+      "name": "Combined Search and Filter",
+      "category": "search_filter",
+      "priority": "medium",
+      "description": "Verify search and filter work together",
+      "preconditions": ["User is logged in with multiple tasks"],
+      "steps": [
+        "Enter search term: 'task'",
+        "Select 'Incomplete Tasks' from dropdown",
+        "Wait for results"
+      ],
+      "expectedOutcome": "Only incomplete tasks containing 'task' in name are shown",
+      "failureCondition": "Filters don't work together or wrong tasks displayed"
+    },
+    {
+      "id": "task-010",
+      "name": "Clear Search Query",
+      "category": "search_filter",
+      "priority": "medium",
+      "description": "Verify clearing search shows all tasks again",
+      "preconditions": ["User has active search filter applied"],
+      "steps": [
+        "Clear the search input field",
+        "Wait for results to update"
+      ],
+      "expectedOutcome": "All tasks (respecting status filter) are displayed again",
+      "failureCondition": "Tasks remain filtered or don't reload"
+    },
+    {
+      "id": "ui-001",
+      "name": "Navigation Bar Visibility",
+      "category": "ui_components",
+      "priority": "medium",
+      "description": "Verify top navigation bar is present and functional",
+      "preconditions": ["User is on any page"],
+      "steps": [
+        "Observe top of page for navigation bar",
+        "Check for branding/logo",
+        "Check for user information or menu items"
+      ],
+      "expectedOutcome": "Navigation bar is visible with appropriate content",
+      "failureCondition": "No navigation bar or missing key elements"
+    },
+    {
+      "id": "ui-002",
+      "name": "Footer Visibility",
+      "category": "ui_components",
+      "priority": "low",
+      "description": "Verify footer is present at bottom of page",
+      "preconditions": ["User is on any page"],
+      "steps": [
+        "Scroll to bottom of page",
+        "Observe footer content"
+      ],
+      "expectedOutcome": "Footer is visible with appropriate content",
+      "failureCondition": "No footer present"
+    },
+    {
+      "id": "ui-003",
+      "name": "Welcome Message Personalization",
+      "category": "ui_components",
+      "priority": "medium",
+      "description": "Verify dashboard shows personalized welcome message",
+      "preconditions": ["User is logged in as 'Alice Smith'"],
+      "steps": [
+        "Navigate to dashboard",
+        "Look for welcome message at top"
+      ],
+      "expectedOutcome": "Message displays 'Welcome Alice Smith' or similar with user's name",
+      "failureCondition": "Generic message or wrong name displayed"
+    },
+    {
+      "id": "ui-004",
+      "name": "Loading States During Task Operations",
+      "category": "ui_components",
+      "priority": "medium",
+      "description": "Verify loading indicators appear during async operations",
+      "preconditions": ["User is logged in"],
+      "steps": [
+        "Click 'Add Task' button after entering task name",
+        "Observe button state",
+        "Perform task update or delete",
+        "Observe button/UI states"
+      ],
+      "expectedOutcome": "Buttons show loading state (e.g., 'Adding...', disabled state) during operations",
+      "failureCondition": "No loading indication, buttons remain clickable during operation"
+    },
+    {
+      "id": "ui-005",
+      "name": "Empty Task List State",
+      "category": "ui_components",
+      "priority": "low",
+      "description": "Verify appropriate message when no tasks exist",
+      "preconditions": ["User is logged in with no tasks"],
+      "steps": [
+        "Delete all tasks or use new account",
+        "Observe task list area"
+      ],
+      "expectedOutcome": "Appropriate message or empty state shown (or empty list)",
+      "failureCondition": "Error displayed or unclear state"
+    },
+    {
+      "id": "ui-006",
+      "name": "Task Visual States",
+      "category": "ui_components",
+      "priority": "medium",
+      "description": "Verify tasks display correct visual states",
+      "preconditions": ["User has both complete and incomplete tasks"],
+      "steps": [
+        "Observe incomplete task styling",
+        "Observe complete task styling",
+        "Compare visual differences"
+      ],
+      "expectedOutcome": "Complete tasks: gray background, opacity reduced, text struck through. Incomplete: white background, normal opacity",
+      "failureCondition": "No visual distinction between task states"
+    },
+    {
+      "id": "nav-001",
+      "name": "Navigate to Task Details",
+      "category": "navigation",
+      "priority": "high",
+      "description": "Verify user can navigate to task details page",
+      "preconditions": ["User is logged in with at least one task"],
+      "steps": [
+        "Find a task in the list",
+        "Click 'Edit' link on the task",
+        "Wait for navigation"
+      ],
+      "expectedOutcome": "User is navigated to /task/:task_id route showing task details",
+      "failureCondition": "Navigation fails or 404 error shown"
+    },
+    {
+      "id": "nav-002",
+      "name": "Return to Dashboard from Task Details",
+      "category": "navigation",
+      "priority": "medium",
+      "description": "Verify user can return to dashboard from task details",
+      "preconditions": ["User is on task details page"],
+      "steps": [
+        "Look for back button or home link",
+        "Click to return to dashboard"
+      ],
+      "expectedOutcome": "User returns to main dashboard with task list",
+      "failureCondition": "Cannot return to dashboard or navigation broken"
+    },
+    {
+      "id": "valid-001",
+      "name": "Empty Task Name Validation",
+      "category": "validation",
+      "priority": "high",
+      "description": "Verify user cannot create task with empty name",
+      "preconditions": ["User is logged in"],
+      "steps": [
+        "Leave task name field empty",
+        "Attempt to click 'Add Task' button"
+      ],
+      "expectedOutcome": "Button is disabled or shows validation error",
+      "failureCondition": "Empty task is created"
+    },
+    {
+      "id": "valid-002",
+      "name": "Email Format Validation on Registration",
+      "category": "validation",
+      "priority": "high",
+      "description": "Verify invalid email format is rejected",
+      "preconditions": ["Navigate to registration page"],
+      "steps": [
+        "Enter name: 'Test User'",
+        "Enter invalid email: 'notanemail'",
+        "Enter password: 'password123'",
+        "Click 'Create account' button"
+      ],
+      "expectedOutcome": "Validation error shown for invalid email format",
+      "failureCondition": "Account created with invalid email or no validation"
+    },
+    {
+      "id": "valid-003",
+      "name": "Duplicate Email Registration",
+      "category": "validation",
+      "priority": "medium",
+      "description": "Verify cannot register with existing email",
+      "preconditions": ["Navigate to registration page", "user1@example.com exists"],
+      "steps": [
+        "Enter name: 'Test User'",
+        "Enter email: 'user1@example.com'",
+        "Enter password: 'newpassword'",
+        "Click 'Create account' button"
+      ],
+      "expectedOutcome": "Error message: 'User with this email already exists'",
+      "failureCondition": "Second account created or no error shown"
+    },
+    {
+      "id": "func-001",
+      "name": "Functional Application Test",
+      "category": "functionality",
+      "priority": "critical",
+      "description": "Verify the application has actual functionality beyond basic placeholder",
+      "preconditions": ["Navigate to application"],
+      "steps": [
+        "Observe initial page load",
+        "Check for authentication page or dashboard",
+        "Verify multiple interactive elements exist (forms, buttons, inputs)",
+        "Check for proper navigation structure",
+        "Verify application has real features: task management, authentication"
+      ],
+      "expectedOutcome": "Application shows full task management system with authentication, task CRUD, search/filter capabilities",
+      "failureCondition": "If page only shows 'Vite + React' placeholder or generic template, this test should FAIL"
+    },
+    {
+      "id": "perf-001",
+      "name": "Task List Load Performance",
+      "category": "performance",
+      "priority": "low",
+      "description": "Verify task list loads in reasonable time",
+      "preconditions": ["User is logged in"],
+      "steps": [
+        "Navigate to dashboard",
+        "Measure time from navigation to tasks displayed",
+        "Verify no excessive delays"
+      ],
+      "expectedOutcome": "Tasks load within 2-3 seconds, loading indicator shown during fetch",
+      "failureCondition": "Tasks take excessive time to load or page hangs"
+    }
+  ],
+  "test_data": {
+    "existing_users": [
+      {
+        "email": "user1@example.com",
+        "password": "password123",
+        "name": "Alice Smith",
+        "expected_tasks": ["Complete Project", "Buy groceries"]
+      },
+      {
+        "email": "user2@example.com",
+        "password": "admin123",
+        "name": "Bob Johnson",
+        "expected_tasks": ["Finish Report"]
+      },
+      {
+        "email": "user3@example.com",
+        "password": "user123",
+        "name": "Charlie Brown",
+        "expected_tasks": ["Clean House"]
+      }
+    ],
+    "test_tasks": [
+      {
+        "name": "Test Task 1",
+        "due_date": null,
+        "is_complete": false
+      },
+      {
+        "name": "Test Task with Date",
+        "due_date": "2025-12-31",
+        "is_complete": false
+      },
+      {
+        "name": "Completed Test Task",
+        "due_date": null,
+        "is_complete": true
+      }
+    ]
+  },
+  "test_execution_notes": [
+    "Run authentication tests first to establish logged-in state",
+    "Task management tests require authenticated user",
+    "Some tests depend on seed data being present",
+    "Use user1@example.com for most tests as it has multiple tasks",
+    "Search/filter tests work best with diverse task data",
+    "Create fresh test user for registration tests to avoid conflicts",
+    "Task isolation: each test should clean up created tasks or use separate accounts"
+  ],
+  "known_limitations": [
+    "No logout button visible in UI (state clears but no explicit UI action)",
+    "Search is case-insensitive but requires exact substring match",
+    "No pagination UI despite backend support",
+    "No bulk task operations",
+    "No task sorting UI (backend supports it)",
+    "Forgot password link is non-functional",
+    "No email verification for new accounts",
+    "Task details page component exists but functionality unclear"
+  ]
+}

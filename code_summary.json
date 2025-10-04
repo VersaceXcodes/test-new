@@ -1,0 +1,374 @@
+{
+  "project_name": "TodoGenie",
+  "description": "A task management application with user authentication, task CRUD operations, search and filtering capabilities",
+  "generated_at": "2025-10-04T05:52:00Z",
+  "tech_stack": {
+    "frontend": {
+      "framework": "React 18.3.1",
+      "build_tool": "Vite 5.4.0",
+      "language": "TypeScript 5.5.3",
+      "router": "React Router DOM 6.26.0",
+      "state_management": ["Zustand (with persist middleware)", "TanStack React Query 5.0.0"],
+      "http_client": "Axios 1.7.7",
+      "ui_library": "Radix UI components with Tailwind CSS 3.4.8",
+      "styling": "Tailwind CSS + CSS-in-JS",
+      "testing": "Vitest 3.2.4 + Testing Library"
+    },
+    "backend": {
+      "framework": "Express 4.19.2",
+      "language": "TypeScript 5.8.2",
+      "runtime": "Node.js with tsx/ts-node",
+      "database": "PGlite 0.2.4 (development) / PostgreSQL (production)",
+      "authentication": "JWT (jsonwebtoken 9.0.2)",
+      "validation": "Zod 3.24.2",
+      "logging": "Morgan 1.10.0",
+      "testing": "Jest 29.7.0 + Supertest 6.3.3"
+    },
+    "deployment": {
+      "platform": "Fly.io",
+      "frontend_url": "https://123test-new.launchpulse.ai",
+      "backend_url": "https://123test-new.launchpulse.ai",
+      "architecture": "Monorepo with concurrent dev servers"
+    }
+  },
+  "features": [
+    {
+      "name": "User Authentication",
+      "description": "Complete authentication system with registration, login, token verification, and session persistence",
+      "files": [
+        "backend/server.ts:196-328",
+        "vitereact/src/store/main.tsx",
+        "vitereact/src/components/views/UV_Authentication.tsx"
+      ],
+      "endpoints": [
+        "POST /api/auth/register",
+        "POST /api/auth/login",
+        "GET /api/auth/verify"
+      ],
+      "features": [
+        "JWT-based authentication with 7-day expiration",
+        "Password stored as plaintext (development only)",
+        "Persistent auth state using Zustand + localStorage",
+        "Protected route guards",
+        "Auto-initialization of auth state on app load"
+      ]
+    },
+    {
+      "name": "Task Management",
+      "description": "Full CRUD operations for tasks with search, filter, and pagination",
+      "files": [
+        "backend/server.ts:368-644",
+        "vitereact/src/components/views/UV_Home.tsx",
+        "vitereact/src/components/views/UV_TaskDetails.tsx"
+      ],
+      "endpoints": [
+        "GET /api/tasks",
+        "POST /api/tasks",
+        "GET /api/tasks/:task_id",
+        "PATCH /api/tasks/:task_id",
+        "DELETE /api/tasks/:task_id"
+      ],
+      "features": [
+        "Create tasks with name, due date, completion status",
+        "Search tasks by name (case-insensitive ILIKE)",
+        "Filter by completion status (complete/incomplete)",
+        "Mark tasks as complete",
+        "Delete tasks with confirmation",
+        "Edit task details",
+        "Pagination support (limit/offset)",
+        "Sorting options",
+        "Real-time UI updates with React Query"
+      ]
+    },
+    {
+      "name": "User Profile",
+      "description": "View user profile information",
+      "files": [
+        "backend/server.ts:335-366"
+      ],
+      "endpoints": [
+        "GET /api/users/:user_id"
+      ],
+      "features": [
+        "Users can only view their own profile",
+        "Returns user_id, email, name, created_at"
+      ]
+    },
+    {
+      "name": "Dashboard/Home View",
+      "description": "Main task dashboard with search, filter, and task management UI",
+      "files": [
+        "vitereact/src/components/views/UV_Home.tsx"
+      ],
+      "features": [
+        "Welcome message with user name",
+        "Add new task form with name and due date",
+        "Search bar for filtering tasks",
+        "Status filter dropdown (complete/incomplete)",
+        "Task list with completion status",
+        "Mark complete button",
+        "Edit and delete actions",
+        "Loading states and optimistic updates"
+      ]
+    },
+    {
+      "name": "Navigation",
+      "description": "Global navigation components",
+      "files": [
+        "vitereact/src/components/views/GV_TopNav.tsx",
+        "vitereact/src/components/views/GV_Footer.tsx"
+      ],
+      "features": [
+        "Top navigation bar",
+        "Footer component",
+        "Consistent layout across all pages"
+      ]
+    }
+  ],
+  "database_schema": {
+    "tables": [
+      {
+        "name": "users",
+        "description": "User accounts with authentication credentials",
+        "columns": [
+          "user_id VARCHAR PRIMARY KEY",
+          "email VARCHAR NOT NULL UNIQUE",
+          "password_hash VARCHAR NOT NULL (plaintext in dev)",
+          "name VARCHAR NOT NULL",
+          "created_at VARCHAR NOT NULL"
+        ],
+        "seed_data": "3 users (user1, user2, user3)"
+      },
+      {
+        "name": "tasks",
+        "description": "User tasks with completion tracking",
+        "columns": [
+          "task_id VARCHAR PRIMARY KEY",
+          "user_id VARCHAR NOT NULL (FK to users)",
+          "task_name VARCHAR NOT NULL",
+          "due_date VARCHAR",
+          "is_complete BOOLEAN DEFAULT FALSE"
+        ],
+        "seed_data": "4 tasks distributed across users"
+      },
+      {
+        "name": "auth_tokens",
+        "description": "Stores authentication tokens for users",
+        "columns": [
+          "token_id VARCHAR PRIMARY KEY",
+          "user_id VARCHAR NOT NULL (FK to users)",
+          "auth_token VARCHAR NOT NULL UNIQUE",
+          "created_at VARCHAR NOT NULL"
+        ],
+        "seed_data": "3 tokens (one per user)"
+      },
+      {
+        "name": "search_filters",
+        "description": "Saved search filters for users",
+        "columns": [
+          "filter_id VARCHAR PRIMARY KEY",
+          "user_id VARCHAR NOT NULL (FK to users)",
+          "search_query VARCHAR",
+          "filter_status VARCHAR DEFAULT 'incomplete'",
+          "created_at VARCHAR NOT NULL"
+        ],
+        "seed_data": "3 saved filters",
+        "note": "Table exists but not actively used in current UI"
+      }
+    ]
+  },
+  "api_endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "description": "Register new user account",
+      "authentication": "None",
+      "request_body": {
+        "email": "string (required)",
+        "password": "string (required)",
+        "name": "string (required)"
+      },
+      "response": {
+        "user": {
+          "id": "string",
+          "email": "string",
+          "name": "string",
+          "created_at": "string"
+        },
+        "token": "string (JWT)"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "description": "Login existing user",
+      "authentication": "None",
+      "request_body": {
+        "email": "string (required)",
+        "password": "string (required)"
+      },
+      "response": {
+        "user": "object",
+        "token": "string (JWT)"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/verify",
+      "description": "Verify JWT token and return user info",
+      "authentication": "Bearer token required",
+      "response": {
+        "user": "object"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/:user_id",
+      "description": "Get user profile (own profile only)",
+      "authentication": "Bearer token required",
+      "response": "User object"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks",
+      "description": "List user's tasks with search and filter",
+      "authentication": "Bearer token required",
+      "query_params": {
+        "search_query": "string (optional)",
+        "filter_status": "complete|incomplete (optional)",
+        "limit": "number (default: unspecified)",
+        "offset": "number (default: 0)",
+        "sort_by": "string (default: task_id)",
+        "sort_order": "asc|desc (default: asc)"
+      },
+      "response": "Array of task objects"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks",
+      "description": "Create new task",
+      "authentication": "Bearer token required",
+      "request_body": {
+        "task_name": "string (required)",
+        "due_date": "date (optional)",
+        "is_complete": "boolean (optional, default: false)"
+      },
+      "response": "Created task object"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/:task_id",
+      "description": "Get single task by ID (own tasks only)",
+      "authentication": "Bearer token required",
+      "response": "Task object"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tasks/:task_id",
+      "description": "Update task (partial updates supported)",
+      "authentication": "Bearer token required",
+      "request_body": {
+        "task_name": "string (optional)",
+        "due_date": "date (optional)",
+        "is_complete": "boolean (optional)"
+      },
+      "response": "Updated task object"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/:task_id",
+      "description": "Delete task (own tasks only)",
+      "authentication": "Bearer token required",
+      "response": "204 No Content"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "description": "Health check endpoint",
+      "authentication": "None",
+      "response": {
+        "status": "ok",
+        "timestamp": "string"
+      }
+    }
+  ],
+  "project_structure": {
+    "root": {
+      "package.json": "Root package with concurrently for running both servers",
+      "README.md": "Project documentation",
+      ".env": "Root environment variables"
+    },
+    "backend": {
+      "server.ts": "Main Express server with all API endpoints (670 lines)",
+      "schema.ts": "Zod validation schemas for users and tasks",
+      "db.sql": "Database schema and seed data",
+      "initdb.js": "Database initialization script",
+      "package.json": "Backend dependencies",
+      "dist/": "Compiled TypeScript output",
+      "public/": "Static assets from built frontend"
+    },
+    "vitereact": {
+      "src/": {
+        "App.tsx": "Main app component with routing and authentication guards",
+        "main.tsx": "React entry point",
+        "AppWrapper.tsx": "App wrapper component",
+        "store/main.tsx": "Zustand store for authentication state",
+        "components/": {
+          "views/": "Page-level components (Authentication, Home, TaskDetails, TopNav, Footer)",
+          "ui/": "Reusable Radix UI components (40+ components)"
+        },
+        "hooks/": "Custom React hooks (toast)",
+        "lib/": "Utility functions",
+        "schema.ts": "TypeScript types and schemas",
+        "__tests__/": "E2E tests"
+      },
+      "package.json": "Frontend dependencies",
+      "vite.config.ts": "Vite configuration",
+      "vitest.config.ts": "Vitest test configuration",
+      "tailwind.config.js": "Tailwind CSS configuration"
+    }
+  },
+  "key_patterns": {
+    "authentication_flow": [
+      "1. User submits login/register form in UV_Authentication",
+      "2. Form calls loginUser/registerUser from Zustand store",
+      "3. Store makes axios request to /api/auth/login or /api/auth/register",
+      "4. Backend validates credentials and generates JWT token",
+      "5. Store saves user data and token to state and localStorage",
+      "6. Protected routes check authentication status before rendering",
+      "7. API requests include Bearer token in Authorization header"
+    ],
+    "task_management_flow": [
+      "1. UV_Home component loads with useQuery to fetch tasks",
+      "2. TanStack Query manages caching and refetching",
+      "3. User actions trigger mutations (create, update, delete)",
+      "4. Mutations call API endpoints with auth token",
+      "5. On success, query cache is invalidated to refetch tasks",
+      "6. UI updates optimistically or after confirmation"
+    ],
+    "routing": [
+      "1. BrowserRouter wraps entire app",
+      "2. Protected routes wrapped in ProtectedRoute component",
+      "3. ProtectedRoute checks authentication and redirects to /auth if needed",
+      "4. Public route: /auth (login/register)",
+      "5. Protected routes: / (home/dashboard), /task/:task_id (task details)",
+      "6. Unknown routes redirect to / which then redirects to /auth if not authenticated"
+    ]
+  },
+  "security_notes": [
+    "Passwords stored as plaintext in development (NOT PRODUCTION READY)",
+    "JWT tokens expire after 7 days",
+    "Users can only access their own tasks and profile",
+    "CORS configured to allow frontend origin",
+    "Auth middleware validates JWT on protected endpoints",
+    "SQL injection prevented by parameterized queries"
+  ],
+  "development_notes": [
+    "PGlite used for development database (in-memory)",
+    "PostgreSQL used in production",
+    "Concurrent dev mode runs both frontend and backend",
+    "Frontend dev server: Vite on port 5173",
+    "Backend server: Express on port 3000",
+    "Hot reload enabled for both servers"
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "generated_at": "2025-10-04T05:52:00Z",
+  "user_structure": {
+    "table_name": "users",
+    "role_field": null,
+    "registration_endpoint": "/api/auth/register",
+    "login_endpoint": "/api/auth/login",
+    "password_storage": "plaintext (development only)",
+    "notes": "No role field in database schema - all users have same permissions"
+  },
+  "total_users": 3,
+  "verified_users": 3,
+  "seed_data_source": "backend/db.sql",
+  "users": [
+    {
+      "user_id": "user1",
+      "email": "user1@example.com",
+      "password": "password123",
+      "name": "Alice Smith",
+      "created_at": "2023-01-01",
+      "verified": true,
+      "token": "will_be_generated_on_login",
+      "description": "First test user with existing tasks"
+    },
+    {
+      "user_id": "user2",
+      "email": "user2@example.com",
+      "password": "admin123",
+      "name": "Bob Johnson",
+      "created_at": "2023-01-02",
+      "verified": true,
+      "token": "will_be_generated_on_login",
+      "description": "Second test user with existing tasks"
+    },
+    {
+      "user_id": "user3",
+      "email": "user3@example.com",
+      "password": "user123",
+      "name": "Charlie Brown",
+      "created_at": "2023-01-03",
+      "verified": true,
+      "token": "will_be_generated_on_login",
+      "description": "Third test user with existing tasks"
+    }
+  ],
+  "by_role": {
+    "user": [
+      {
+        "email": "user1@example.com",
+        "password": "password123",
+        "name": "Alice Smith",
+        "verified": true
+      },
+      {
+        "email": "user2@example.com",
+        "password": "admin123",
+        "name": "Bob Johnson",
+        "verified": true
+      },
+      {
+        "email": "user3@example.com",
+        "password": "user123",
+        "name": "Charlie Brown",
+        "verified": true
+      }
+    ]
+  },
+  "test_scenarios": {
+    "existing_users": {
+      "description": "Use seeded users from db.sql for testing",
+      "users": ["user1@example.com", "user2@example.com", "user3@example.com"],
+      "passwords": ["password123", "admin123", "user123"]
+    },
+    "new_user_registration": {
+      "description": "Test new user registration flow",
+      "example": {
+        "email": "newuser@test.com",
+        "password": "TestPassword123!",
+        "name": "Test User"
+      }
+    }
+  },
+  "notes": [
+    "Passwords are stored in plaintext for development ease (see server.ts:218 and server.ts:275)",
+    "JWT tokens are generated on login/register with 7-day expiration",
+    "Auth tokens are also stored in auth_tokens table",
+    "Users can only access their own tasks and profile data",
+    "No admin or special role functionality exists in this application"
+  ]
+}
