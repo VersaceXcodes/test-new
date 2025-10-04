@@ -1,0 +1,19 @@
+{
+  "timestamp": 1759555366039,
+  "operation": {
+    "id": "webapp:react:views",
+    "refs": {
+      "id": "UV_Authentication",
+      "version": "latest"
+    }
+  },
+  "projectId": "test-new",
+  "files": [
+    {
+      "path": "/mnt/data/test-new/vitereact/src/components/views/UV_Authentication.tsx",
+      "type": "text",
+      "size": 6339,
+      "dependencies": false
+    }
+  ]
+}

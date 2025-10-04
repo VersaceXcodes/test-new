@@ -1,0 +1,129 @@
+asyncapi: 2.0.0
+info:
+  title: TodoGenie Real-Time API
+  version: 1.0.0
+  description: This is the asyncAPI specification for real-time events in the
+    TodoGenie application.
+servers:
+  - url: http://localhost:3000
+    protocol: ws
+channels:
+  user/authentication:
+    description: Channel for user authentication events
+    publish:
+      summary: User logged in or logged out
+      operationId: userAuthenticationUpdate
+      message:
+        $ref: "#/components/messages/UserAuthenticationMessage"
+  task/updates:
+    description: Channel for real-time task updates
+    publish:
+      summary: Task created, updated, or deleted
+      operationId: taskUpdate
+      message:
+        $ref: "#/components/messages/TaskMessage"
+  task/completed:
+    description: Channel for marking tasks as complete or incomplete
+    publish:
+      summary: Task marked as complete or incomplete
+      operationId: taskCompletionUpdate
+      message:
+        $ref: "#/components/messages/TaskCompletionMessage"
+  task/search:
+    description: Channel for task searches
+    publish:
+      summary: Task search results update
+      operationId: taskSearchResults
+      message:
+        $ref: "#/components/messages/TaskSearchMessage"
+components:
+  messages:
+    UserAuthenticationMessage:
+      name: UserAuthenticationMessage
+      payload:
+        type: object
+        properties:
+          current_user:
+            type: object
+            properties:
+              user_id:
+                type: string
+              email:
+                type: string
+              name:
+                type: string
+              created_at:
+                type: string
+            nullable: true
+          auth_token:
+            type: string
+            nullable: true
+          authentication_status:
+            type: object
+            properties:
+              is_authenticated:
+                type: boolean
+              is_loading:
+                type: boolean
+          error_message:
+            type: string
+            nullable: true
+    TaskMessage:
+      name: TaskMessage
+      payload:
+        type: object
+        properties:
+          task_id:
+            type: string
+          user_id:
+            type: string
+          task_name:
+            type: string
+          due_date:
+            type: string
+            nullable: true
+          is_complete:
+            type: boolean
+    TaskCompletionMessage:
+      name: TaskCompletionMessage
+      payload:
+        type: object
+        properties:
+          task_id:
+            type: string
+          user_id:
+            type: string
+          is_complete:
+            type: boolean
+    TaskSearchMessage:
+      name: TaskSearchMessage
+      payload:
+        type: object
+        properties:
+          user_id:
+            type: string
+            nullable: true
+          search_query:
+            type: string
+            nullable: true
+          filter_status:
+            type: string
+            enum:
+              - complete
+              - incomplete
+              - all
+            default: all
+          task_list:
+            type: array
+            items:
+              type: object
+              properties:
+                task_id:
+                  type: string
+                task_name:
+                  type: string
+                due_date:
+                  type: string
+                  nullable: true
+                is_complete:
+                  type: boolean

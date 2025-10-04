@@ -1,0 +1,15 @@
+{
+  "timestamp": 1759555070603,
+  "operation": {
+    "id": "backend:specifications:openapi"
+  },
+  "projectId": "test-new",
+  "files": [
+    {
+      "path": "/mnt/data/test-new/backend/openapi.yaml",
+      "type": "text",
+      "size": 5590,
+      "dependencies": false
+    }
+  ]
+}
