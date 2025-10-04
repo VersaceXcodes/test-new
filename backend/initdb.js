@@ -30,15 +30,61 @@ async function initDb() {
     // Begin transaction
     await client.query('BEGIN');
     
-    // Read and split SQL commands
+    // Check if the expected simple schema tables exist
+    const expectedTables = ['users', 'tasks', 'auth_tokens', 'search_filters'];
+    const existingTablesResult = await client.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name = ANY($1);
+    `, [expectedTables]);
+    
+    const existingTableNames = existingTablesResult.rows.map(row => row.table_name);
+    console.log('Expected tables found:', existingTableNames);
+    
+    // If we have the expected tables, check if they have the right structure
+    let needsRecreation = false;
+    if (existingTableNames.includes('users')) {
+      const userColumnsResult = await client.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'user_id';
+      `);
+      
+      if (userColumnsResult.rows.length === 0) {
+        console.log('Users table exists but has wrong structure (no user_id column)');
+        needsRecreation = true;
+      }
+    }
+    
+    // If tables need recreation or don't exist, drop and recreate them
+    if (needsRecreation || existingTableNames.length === 0) {
+      console.log('Dropping and recreating tables with correct schema...');
+      
+      // Drop tables in reverse dependency order to avoid foreign key constraints
+      const dropTables = ['search_filters', 'auth_tokens', 'tasks', 'users'];
+      for (const tableName of dropTables) {
+        try {
+          await client.query(`DROP TABLE IF EXISTS ${tableName} CASCADE;`);
+          console.log(`Dropped table: ${tableName}`);
+        } catch (error) {
+          console.warn(`Could not drop table ${tableName}:`, error.message);
+        }
+      }
+    }
+    
+    // Read and execute the schema creation
     const dbInitCommands = fs
       .readFileSync(`./db.sql`, "utf-8")
       .toString()
-      .split(/(?=CREATE TABLE |INSERT INTO)/);
+      .split(/(?=CREATE TABLE |INSERT INTO)/)
+      .filter(cmd => cmd.trim().length > 0);
 
     // Execute each command
     for (let cmd of dbInitCommands) {
-      console.dir({ "backend:db:init:command": cmd });
+      cmd = cmd.trim();
+      if (!cmd) continue;
+      
+      console.log('Executing command:', cmd.substring(0, 100) + '...');
       await client.query(cmd);
     }
 
