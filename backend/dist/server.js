@@ -114,16 +114,27 @@ const __dirname = path.dirname(__filename);
 const port = process.env.PORT || 3000;
 // Middleware setup
 app.use(morgan('combined'));
+// Add request logging middleware
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    if (req.path.startsWith('/api/')) {
+        console.log('API Request Headers:', JSON.stringify(req.headers, null, 2));
+        console.log('API Request Body:', JSON.stringify(req.body, null, 2));
+    }
+    next();
+});
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
     : ['http://localhost:5173', 'https://123test-new.launchpulse.ai'];
 app.use(cors({
     origin: (origin, callback) => {
+        console.log('CORS request from origin:', origin);
         if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
             callback(null, true);
         }
         else {
-            callback(null, true);
+            console.warn('CORS blocked origin:', origin);
+            callback(new Error(`Origin ${origin} not allowed by CORS`));
         }
     },
     credentials: true,
@@ -142,6 +153,23 @@ app.use((req, res, next) => {
     next();
 });
 app.use(express.json({ limit: "5mb" }));
+// Response validation middleware - ensure all API responses are valid JSON
+app.use('/api', (req, res, next) => {
+    const originalJson = res.json;
+    res.json = function (obj) {
+        console.log(`API Response for ${req.method} ${req.path}:`, JSON.stringify(obj, null, 2));
+        try {
+            // Validate that the object can be serialized to JSON
+            JSON.stringify(obj);
+            return originalJson.call(this, obj);
+        }
+        catch (error) {
+            console.error('Failed to serialize response to JSON:', error);
+            return originalJson.call(this, createErrorResponse('Invalid response format', error, 'RESPONSE_SERIALIZATION_ERROR'));
+        }
+    };
+    next();
+});
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 /*
@@ -174,8 +202,17 @@ const authenticateToken = async (req, res, next) => {
   Stores password directly without hashing for development ease
 */
 app.post('/api/auth/register', async (req, res) => {
+    console.log('=== REGISTRATION REQUEST START ===');
+    console.log('Request method:', req.method);
+    console.log('Request headers:', JSON.stringify(req.headers, null, 2));
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
     try {
         console.log('Registration attempt:', { email: req.body?.email, hasPassword: !!req.body?.password, hasName: !!req.body?.name });
+        // Validate that request body exists and has required fields
+        if (!req.body) {
+            console.error('No request body provided');
+            return res.status(400).json(createErrorResponse('Request body is required', null, 'MISSING_REQUEST_BODY'));
+        }
         // Validate input using Zod schema
         const validationResult = createUserInputSchema.safeParse(req.body);
         if (!validationResult.success) {
@@ -202,7 +239,7 @@ app.post('/api/auth/register', async (req, res) => {
         const token_id = uuidv4();
         await pool.query('INSERT INTO auth_tokens (token_id, user_id, auth_token, created_at) VALUES ($1, $2, $3, $4)', [token_id, user.user_id, auth_token, created_at]);
         console.log('Registration successful for user:', user.email);
-        res.status(201).json({
+        const response = {
             user: {
                 id: user.user_id,
                 email: user.email,
@@ -210,10 +247,14 @@ app.post('/api/auth/register', async (req, res) => {
                 created_at: user.created_at
             },
             token: auth_token
-        });
+        };
+        console.log('Sending registration response:', JSON.stringify(response, null, 2));
+        console.log('=== REGISTRATION REQUEST END ===');
+        res.status(201).json(response);
     }
     catch (error) {
         console.error('Registration error:', error);
+        console.log('=== REGISTRATION REQUEST END (ERROR) ===');
         res.status(500).json(createErrorResponse('Internal server error during registration', error, 'INTERNAL_SERVER_ERROR'));
     }
 });
@@ -223,10 +264,15 @@ app.post('/api/auth/register', async (req, res) => {
   Uses direct password comparison for development
 */
 app.post('/api/auth/login', async (req, res) => {
+    console.log('=== LOGIN REQUEST START ===');
+    console.log('Request method:', req.method);
+    console.log('Request headers:', JSON.stringify(req.headers, null, 2));
+    console.log('Request body:', JSON.stringify({ email: req.body?.email, hasPassword: !!req.body?.password }, null, 2));
     try {
         const { email, password } = req.body;
         // Validation
         if (!email || !password) {
+            console.error('Missing email or password');
             return res.status(400).json(createErrorResponse('Email and password are required', null, 'MISSING_REQUIRED_FIELDS'));
         }
         // Find user with direct password comparison (no hashing for development)
@@ -245,7 +291,7 @@ app.post('/api/auth/login', async (req, res) => {
         const token_id = uuidv4();
         const created_at = new Date().toISOString();
         await pool.query('INSERT INTO auth_tokens (token_id, user_id, auth_token, created_at) VALUES ($1, $2, $3, $4)', [token_id, user.user_id, auth_token, created_at]);
-        res.json({
+        const response = {
             user: {
                 id: user.user_id,
                 email: user.email,
@@ -253,10 +299,14 @@ app.post('/api/auth/login', async (req, res) => {
                 created_at: user.created_at
             },
             token: auth_token
-        });
+        };
+        console.log('Sending login response:', JSON.stringify(response, null, 2));
+        console.log('=== LOGIN REQUEST END ===');
+        res.json(response);
     }
     catch (error) {
         console.error('Login error:', error);
+        console.log('=== LOGIN REQUEST END (ERROR) ===');
         res.status(500).json(createErrorResponse('Internal server error during login', error, 'INTERNAL_SERVER_ERROR'));
     }
 });
@@ -562,10 +612,26 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
-// Global error handler
+// Global error handler - ensure all responses are valid JSON
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
-    res.status(500).json(createErrorResponse('Internal server error', err, 'UNHANDLED_ERROR'));
+    // Ensure we always send valid JSON response
+    try {
+        if (!res.headersSent) {
+            res.status(500).json(createErrorResponse('Internal server error', err, 'UNHANDLED_ERROR'));
+        }
+    }
+    catch (jsonError) {
+        console.error('Failed to send JSON error response:', jsonError);
+        if (!res.headersSent) {
+            res.status(500).send('Internal Server Error');
+        }
+    }
+});
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+    console.log('404 - API endpoint not found:', req.path);
+    res.status(404).json(createErrorResponse(`API endpoint ${req.path} not found`, null, 'ENDPOINT_NOT_FOUND'));
 });
 // Serve static files from Vite build or local public directory
 const frontendPath = process.env.NODE_ENV === 'production'

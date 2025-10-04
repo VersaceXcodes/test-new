@@ -65,12 +65,18 @@ export const useAppStore = create<AppState>()(
 
       try {
         const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-        console.log('Logging in at:', `${apiUrl}/api/auth/login`);
+        console.log('=== LOGIN REQUEST START ===');
+        console.log('API URL:', apiUrl);
+        console.log('Login endpoint:', `${apiUrl}/api/auth/login`);
+        console.log('Request data:', { email, hasPassword: !!password });
         
         const response = await axiosInstance.post(
           `${apiUrl}/api/auth/login`,
           { email, password }
         );
+        
+        console.log('Login response status:', response.status);
+        console.log('Login response data:', response.data);
 
         const { user, token } = response.data;
 
@@ -85,8 +91,12 @@ export const useAppStore = create<AppState>()(
             error_message: null,
           },
         }));
+        console.log('=== LOGIN REQUEST SUCCESS ===');
       } catch (error: any) {
-        console.error('Login error:', error);
+        console.error('=== LOGIN REQUEST ERROR ===');
+        console.error('Error object:', error);
+        console.error('Error response:', error.response);
+        console.error('Error request:', error.request);
         
         let errorMessage = 'Login failed';
         
@@ -129,12 +139,18 @@ export const useAppStore = create<AppState>()(
 
       try {
         const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-        console.log('Registering user at:', `${apiUrl}/api/auth/register`);
+        console.log('=== REGISTER REQUEST START ===');
+        console.log('API URL:', apiUrl);
+        console.log('Register endpoint:', `${apiUrl}/api/auth/register`);
+        console.log('Request data:', { email, name, hasPassword: !!password });
         
         const response = await axiosInstance.post(
           `${apiUrl}/api/auth/register`,
           { email, password, name }
         );
+        
+        console.log('Register response status:', response.status);
+        console.log('Register response data:', response.data);
 
         const { user, token } = response.data;
 
@@ -149,8 +165,12 @@ export const useAppStore = create<AppState>()(
             error_message: null,
           },
         }));
+        console.log('=== REGISTER REQUEST SUCCESS ===');
       } catch (error: any) {
-        console.error('Registration error:', error);
+        console.error('=== REGISTER REQUEST ERROR ===');
+        console.error('Error object:', error);
+        console.error('Error response:', error.response);
+        console.error('Error request:', error.request);
         
         let errorMessage = 'Registration failed';
         
