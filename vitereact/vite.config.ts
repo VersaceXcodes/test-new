@@ -35,7 +35,7 @@ export default defineConfig({
 	],
 	server: {
 		host: true,
-		allowedHosts: true,
+		allowedHosts: ['123test-new.launchpulse.ai', 'localhost'],
 	},
 	resolve: {
 		alias: {
@@ -44,6 +44,6 @@ export default defineConfig({
 		},
 	},
 	build: {
-		outDir: "public",
+		outDir: "dist",
 	},
 });
