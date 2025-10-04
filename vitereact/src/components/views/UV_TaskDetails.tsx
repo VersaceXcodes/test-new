@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Task, updateTaskInputSchema } from '@/DB/zodschemas';
+import { Task, updateTaskInputSchema } from '@schema';
 import { useAppStore } from '@/store/main';
 
 const fetchTaskDetails = async (task_id: string, authToken: string | null) => {

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAppStore } from '@/store/main';
-import { Task, CreateTaskInput } from '@/DB:zodschemas';
+import { Task, CreateTaskInput } from '@schema';
 
 const UV_Home: React.FC = () => {
   const currentUser = useAppStore((state) => state.authentication_state.current_user);
@@ -15,16 +15,21 @@ const UV_Home: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('incomplete');
 
-  const fetchTasks = useQuery(['tasks', currentUser?.id, searchQuery, filterStatus], async () => {
+  const fetchTasks = useQuery({
+    queryKey: ['tasks', currentUser?.id, searchQuery, filterStatus],
+    queryFn: async () => {
     const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/tasks`, {
       params: {
-        user_id: currentUser?.id,
         search_query: searchQuery,
         filter_status: filterStatus,
       },
       headers: { Authorization: `Bearer ${authToken}` },
     });
-    return data;
+      return data;
+    },
+    enabled: !!authToken && !!currentUser,
+    staleTime: 30000,
+    refetchOnWindowFocus: false
   });
 
   const createTask = useMutation((newTask: CreateTaskInput) =>
@@ -33,9 +38,36 @@ const UV_Home: React.FC = () => {
     })
   );
 
+  const updateTask = useMutation(
+    (updatedTask: { task_id: string; is_complete: boolean }) =>
+      axios.patch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/tasks/${updatedTask.task_id}`, 
+        { is_complete: updatedTask.is_complete },
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      ),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['tasks']);
+      }
+    }
+  );
+
+  const deleteTask = useMutation(
+    (taskId: string) =>
+      axios.delete(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['tasks']);
+      }
+    }
+  );
+
   const handleAddTask = () => {
+    if (!taskName.trim()) return;
+    
     createTask.mutate(
-      { user_id: currentUser?.id!, task_name: taskName, due_date: dueDate, is_complete: false },
+      { task_name: taskName.trim(), due_date: dueDate || null, is_complete: false },
       {
         onSuccess: () => {
           queryClient.invalidateQueries(['tasks', currentUser?.id, searchQuery, filterStatus]);
@@ -68,9 +100,10 @@ const UV_Home: React.FC = () => {
               />
               <button
                 onClick={handleAddTask}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-all duration-200"
+                disabled={!taskName.trim() || createTask.isLoading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium transition-all duration-200"
               >
-                Add Task
+                {createTask.isLoading ? 'Adding...' : 'Add Task'}
               </button>
             </div>
             <div>
@@ -95,14 +128,41 @@ const UV_Home: React.FC = () => {
           {!fetchTasks.isFetching && fetchTasks.data ? (
             <ul className="space-y-4">
               {fetchTasks.data.map((task: Task) => (
-                <li key={task.task_id} className="flex justify-between items-center p-4 bg-white rounded-lg shadow-lg">
+                <li key={task.task_id} className={`flex justify-between items-center p-4 rounded-lg shadow-lg ${task.is_complete ? 'bg-gray-100 opacity-75' : 'bg-white'}`}>
                   <div>
-                    <h2 className="text-xl font-bold">{task.task_name}</h2>
-                    <p className="text-sm text-gray-600">{task.due_date ? `Due: ${new Date(task.due_date).toLocaleDateString()}` : 'No due date'}</p>
+                    <h2 className={`text-xl font-bold ${task.is_complete ? 'line-through text-gray-600' : ''}`}>{task.task_name}</h2>
+                    <p className="text-sm text-gray-600">
+                      {task.due_date ? `Due: ${new Date(task.due_date).toLocaleDateString()}` : 'No due date'}
+                      {task.is_complete && <span className="ml-2 text-green-600 font-medium">✓ Completed</span>}
+                    </p>
                   </div>
                   <div className="space-x-4">
-                    <button className="text-blue-600 hover:text-blue-800">Mark Complete</button>
-                    <button className="text-red-600 hover:text-red-800">Delete</button>
+                    {!task.is_complete && (
+                      <button 
+                        onClick={() => updateTask.mutate({ task_id: task.task_id, is_complete: true })}
+                        className="text-blue-600 hover:text-blue-800"
+                        disabled={updateTask.isLoading}
+                      >
+                        Mark Complete
+                      </button>
+                    )}
+                    <Link 
+                      to={`/task/${task.task_id}`}
+                      className="text-green-600 hover:text-green-800"
+                    >
+                      Edit
+                    </Link>
+                    <button 
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete this task?')) {
+                          deleteTask.mutate(task.task_id);
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-800"
+                      disabled={deleteTask.isLoading}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </li>
               ))}

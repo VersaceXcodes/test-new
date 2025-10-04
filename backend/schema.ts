@@ -12,7 +12,7 @@ export const userSchema = z.object({
 // Input schema for creating a user
 export const createUserInputSchema = z.object({
   email: z.string().email().min(1),
-  password_hash: z.string().min(8),
+  password: z.string().min(8),
   name: z.string().min(1),
   // created_at and user_id are auto-generated, so they are not included here
 });
@@ -28,8 +28,8 @@ export const updateUserInputSchema = z.object({
 // Query schema for searching users
 export const searchUserInputSchema = z.object({
   query: z.string().optional(),
-  limit: z.number().int().positive().default(10),
-  offset: z.number().int().nonnegative().default(0),
+  limit: z.coerce.number().int().positive().default(10),
+  offset: z.coerce.number().int().nonnegative().default(0),
   sort_by: z.enum(['name', 'created_at']).default('created_at'),
   sort_order: z.enum(['asc', 'desc']).default('desc')
 });
@@ -63,9 +63,9 @@ export const updateTaskInputSchema = z.object({
 export const searchTaskInputSchema = z.object({
   user_id: z.string().optional(),
   query: z.string().optional(),
-  is_complete: z.boolean().optional(),
-  limit: z.number().int().positive().default(10),
-  offset: z.number().int().nonnegative().default(0),
+  is_complete: z.coerce.boolean().optional(),
+  limit: z.coerce.number().int().positive().default(10),
+  offset: z.coerce.number().int().nonnegative().default(0),
   sort_by: z.enum(['task_name', 'due_date', 'created_at']).default('due_date'),
   sort_order: z.enum(['asc', 'desc']).default('desc')
 });
@@ -94,8 +94,8 @@ export const updateAuthTokenInputSchema = z.object({
 // Query schema for searching auth tokens
 export const searchAuthTokenInputSchema = z.object({
   user_id: z.string().optional(),
-  limit: z.number().int().positive().default(10),
-  offset: z.number().int().nonnegative().default(0),
+  limit: z.coerce.number().int().positive().default(10),
+  offset: z.coerce.number().int().nonnegative().default(0),
   sort_by: z.enum(['created_at']).default('created_at'),
   sort_order: z.enum(['asc', 'desc']).default('desc')
 });
@@ -128,9 +128,9 @@ export const updateSearchFilterInputSchema = z.object({
 export const searchSearchFilterInputSchema = z.object({
   user_id: z.string().optional(),
   search_query: z.string().optional(),
-  filter_status: z.string().nullable().optional(),
-  limit: z.number().int().positive().default(10),
-  offset: z.number().int().nonnegative().default(0),
+  filter_status: z.string().nullable().optional().default('incomplete'),
+  limit: z.coerce.number().int().positive().default(10),
+  offset: z.coerce.number().int().nonnegative().default(0),
   sort_by: z.enum(['created_at']).default('created_at'),
   sort_order: z.enum(['asc', 'desc']).default('desc')
 });

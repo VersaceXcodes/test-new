@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Pool } from 'pg';
+import { PGlite } from '@electric-sql/pglite';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import morgan from 'morgan';
@@ -68,24 +69,77 @@ function createErrorResponse(
   return response;
 }
 
-// Database setup - using the exact pattern specified
+// Database setup - using PGlite for development
 const { DATABASE_URL, PGHOST, PGDATABASE, PGUSER, PGPASSWORD, PGPORT = 5432, JWT_SECRET = 'your-secret-key' } = process.env;
 
-const pool = new Pool(
-  DATABASE_URL
-    ? { 
-        connectionString: DATABASE_URL, 
-        ssl: { require: true } 
+let pool: any;
+let db: PGlite;
+
+async function initializeDatabase() {
+  if (process.env.NODE_ENV === 'development') {
+    // Use PGlite for development testing
+    db = new PGlite();
+    
+    // Initialize tables
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+          user_id VARCHAR PRIMARY KEY,
+          email VARCHAR NOT NULL UNIQUE,
+          password_hash VARCHAR NOT NULL,
+          name VARCHAR NOT NULL,
+          created_at VARCHAR NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS tasks (
+          task_id VARCHAR PRIMARY KEY,
+          user_id VARCHAR NOT NULL,
+          task_name VARCHAR NOT NULL,
+          due_date VARCHAR,
+          is_complete BOOLEAN NOT NULL DEFAULT FALSE,
+          FOREIGN KEY (user_id) REFERENCES users(user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS auth_tokens (
+          token_id VARCHAR PRIMARY KEY,
+          user_id VARCHAR NOT NULL,
+          auth_token VARCHAR NOT NULL UNIQUE,
+          created_at VARCHAR NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users(user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS search_filters (
+          filter_id VARCHAR PRIMARY KEY,
+          user_id VARCHAR NOT NULL,
+          search_query VARCHAR,
+          filter_status VARCHAR DEFAULT 'incomplete',
+          created_at VARCHAR NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users(user_id)
+      );
+    `);
+
+    pool = {
+      query: async (text: string, params?: any[]) => {
+        return await db.query(text, params);
       }
-    : {
-        host: PGHOST,
-        database: PGDATABASE,
-        user: PGUSER,
-        password: PGPASSWORD,
-        port: Number(PGPORT),
-        ssl: { require: true },
-      }
-);
+    };
+  } else {
+    pool = new Pool(
+      DATABASE_URL
+        ? { 
+            connectionString: DATABASE_URL, 
+            ssl: { require: true } 
+          }
+        : {
+            host: PGHOST,
+            database: PGDATABASE,
+            user: PGUSER,
+            password: PGPASSWORD,
+            port: Number(PGPORT),
+            ssl: { require: true },
+          }
+    );
+  }
+}
 
 const app = express();
 
@@ -147,7 +201,7 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json(createErrorResponse('Validation failed', validationResult.error, 'VALIDATION_ERROR'));
     }
 
-    const { email, password_hash: password, name } = validationResult.data;
+    const { email, password, name } = validationResult.data;
 
     // Check if user already exists
     const existingUser = await pool.query('SELECT user_id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
@@ -181,8 +235,13 @@ app.post('/api/auth/register', async (req, res) => {
     );
 
     res.status(201).json({
-      user_id: user.user_id,
-      auth_token
+      user: {
+        id: user.user_id,
+        email: user.email,
+        name: user.name,
+        created_at: user.created_at
+      },
+      token: auth_token
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -233,12 +292,38 @@ app.post('/api/auth/login', async (req, res) => {
     );
 
     res.json({
-      user_id: user.user_id,
-      auth_token
+      user: {
+        id: user.user_id,
+        email: user.email,
+        name: user.name,
+        created_at: user.created_at
+      },
+      token: auth_token
     });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json(createErrorResponse('Internal server error during login', error, 'INTERNAL_SERVER_ERROR'));
+  }
+});
+
+/*
+  Auth Verify Endpoint
+  Verifies JWT token and returns user information
+  Used for auth state initialization
+*/
+app.get('/api/auth/verify', authenticateToken, async (req, res) => {
+  try {
+    res.json({
+      user: {
+        id: req.user.user_id,
+        email: req.user.email,
+        name: req.user.name,
+        created_at: req.user.created_at
+      }
+    });
+  } catch (error) {
+    console.error('Auth verify error:', error);
+    res.status(500).json(createErrorResponse('Internal server error during auth verification', error, 'INTERNAL_SERVER_ERROR'));
   }
 });
 
@@ -290,12 +375,12 @@ app.get('/api/tasks', authenticateToken, async (req, res) => {
     // Validate query parameters using Zod schema
     const queryValidation = searchTaskInputSchema.safeParse({
       user_id: req.query.user_id,
-      query: req.query.search_query,
-      is_complete: req.query.filter_status === 'complete' ? true : req.query.filter_status === 'incomplete' ? false : undefined,
-      limit: req.query.limit ? parseInt(req.query.limit) : 10,
-      offset: req.query.offset ? parseInt(req.query.offset) : 0,
-      sort_by: req.query.sort_by || 'due_date',
-      sort_order: req.query.sort_order || 'desc'
+      query: req.query.search_query || req.query.query,
+      is_complete: req.query.filter_status === 'complete' ? true : req.query.filter_status === 'incomplete' ? false : req.query.is_complete,
+      limit: req.query.limit,
+      offset: req.query.offset,
+      sort_by: req.query.sort_by,
+      sort_order: req.query.sort_order
     });
 
     if (!queryValidation.success) {
@@ -566,14 +651,22 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Serve static files from Vite build
+app.use(express.static(path.join(__dirname, '..', 'vitereact', 'public')));
+
 // Catch-all route for SPA routing - serve index.html for non-API routes only
 app.get(/^(?!\/api).*/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'vitereact', 'public', 'index.html'));
 });
 
 export { app, pool };
 
 // Start the server
-app.listen(port, '0.0.0.0', () => {
-  console.log(`TodoGenie server running on port ${port} and listening on 0.0.0.0`);
-});
+async function startServer() {
+  await initializeDatabase();
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`TodoGenie server running on port ${port} and listening on 0.0.0.0`);
+  });
+}
+
+startServer();
