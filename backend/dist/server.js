@@ -217,7 +217,34 @@ app.post('/api/auth/register', async (req, res) => {
         const validationResult = createUserInputSchema.safeParse(req.body);
         if (!validationResult.success) {
             console.error('Validation failed:', validationResult.error);
-            return res.status(400).json(createErrorResponse('Validation failed', validationResult.error, 'VALIDATION_ERROR'));
+            // Extract specific field errors for better UX
+            const fieldErrors = validationResult.error.errors.map(err => ({
+                field: err.path.join('.'),
+                message: err.message,
+                code: err.code
+            }));
+            const primaryError = fieldErrors[0];
+            let userMessage = 'Validation failed';
+            // Provide user-friendly error messages
+            if (primaryError?.field === 'password' && primaryError?.code === 'too_small') {
+                userMessage = 'Password must be at least 8 characters long';
+            }
+            else if (primaryError?.field === 'email' && primaryError?.code === 'invalid_string') {
+                userMessage = 'Please enter a valid email address';
+            }
+            else if (primaryError?.field === 'name' && primaryError?.code === 'too_small') {
+                userMessage = 'Name is required';
+            }
+            else if (fieldErrors.length > 0) {
+                userMessage = `${primaryError.field}: ${primaryError.message}`;
+            }
+            return res.status(400).json({
+                success: false,
+                message: userMessage,
+                timestamp: new Date().toISOString(),
+                error_code: 'VALIDATION_ERROR',
+                field_errors: fieldErrors
+            });
         }
         const { email, password, name } = validationResult.data;
         // Check if user already exists

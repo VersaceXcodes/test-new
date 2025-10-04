@@ -105,7 +105,14 @@ export const useAppStore = create<AppState>()(
         } else if (error.code === 'ERR_NETWORK') {
           errorMessage = 'Network error. Please check your connection and try again.';
         } else if (error.response) {
-          errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+          const responseData = error.response.data;
+          if (responseData?.message) {
+            errorMessage = responseData.message;
+          } else if (responseData?.field_errors?.length > 0) {
+            errorMessage = responseData.field_errors[0].message;
+          } else {
+            errorMessage = `Server error: ${error.response.status}`;
+          }
         } else if (error.message) {
           errorMessage = error.message;
         }
@@ -179,7 +186,14 @@ export const useAppStore = create<AppState>()(
         } else if (error.code === 'ERR_NETWORK') {
           errorMessage = 'Network error. Please check your connection and try again.';
         } else if (error.response) {
-          errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+          const responseData = error.response.data;
+          if (responseData?.message) {
+            errorMessage = responseData.message;
+          } else if (responseData?.field_errors?.length > 0) {
+            errorMessage = responseData.field_errors[0].message;
+          } else {
+            errorMessage = `Server error: ${error.response.status}`;
+          }
         } else if (error.message) {
           errorMessage = error.message;
         }

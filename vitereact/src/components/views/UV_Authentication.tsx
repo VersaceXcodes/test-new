@@ -7,6 +7,7 @@ const UV_Authentication: React.FC = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
 
   const isLoading = useAppStore(state => state.authentication_state.authentication_status.is_loading);
   const errorMessage = useAppStore(state => state.authentication_state.error_message);
@@ -14,9 +15,37 @@ const UV_Authentication: React.FC = () => {
   const registerUser = useAppStore(state => state.register_user);
   const clearAuthError = useAppStore(state => state.clear_auth_error);
 
+  const validateForm = () => {
+    const errors: {[key: string]: string} = {};
+    
+    if (!email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    if (!password) {
+      errors.password = 'Password is required';
+    } else if (password.length < 8) {
+      errors.password = 'Password must be at least 8 characters long';
+    }
+    
+    if (isRegisterMode && !name.trim()) {
+      errors.name = 'Name is required';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearAuthError();
+    setValidationErrors({});
+    
+    if (!validateForm()) {
+      return;
+    }
     
     try {
       if (isRegisterMode) {
@@ -32,6 +61,7 @@ const UV_Authentication: React.FC = () => {
   const toggleMode = () => {
     setIsRegisterMode(!isRegisterMode);
     clearAuthError();
+    setValidationErrors({});
     setEmail('');
     setPassword('');
     setName('');
@@ -66,10 +96,20 @@ const UV_Authentication: React.FC = () => {
                     type="text"
                     required={isRegisterMode}
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (validationErrors.name && e.target.value.trim()) {
+                        setValidationErrors(prev => ({ ...prev, name: '' }));
+                      }
+                    }}
                     placeholder="Full Name"
-                    className="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                    className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
+                      validationErrors.name ? 'border-red-300' : 'border-gray-300'
+                    }`}
                   />
+                  {validationErrors.name && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>
+                  )}
                 </div>
               )}
               
@@ -84,10 +124,20 @@ const UV_Authentication: React.FC = () => {
                   autoComplete="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (validationErrors.email && e.target.value.trim()) {
+                      setValidationErrors(prev => ({ ...prev, email: '' }));
+                    }
+                  }}
                   placeholder="Email address"
-                  className="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
+                    validationErrors.email ? 'border-red-300' : 'border-gray-300'
+                  }`}
                 />
+                {validationErrors.email && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                )}
               </div>
               
               <div>
@@ -101,10 +151,23 @@ const UV_Authentication: React.FC = () => {
                   autoComplete={isRegisterMode ? "new-password" : "current-password"}
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (validationErrors.password && e.target.value.length >= 8) {
+                      setValidationErrors(prev => ({ ...prev, password: '' }));
+                    }
+                  }}
                   placeholder="Password"
-                  className="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
+                    validationErrors.password ? 'border-red-300' : 'border-gray-300'
+                  }`}
                 />
+                {validationErrors.password && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+                )}
+                {isRegisterMode && !validationErrors.password && (
+                  <p className="mt-1 text-sm text-gray-500">Must be at least 8 characters</p>
+                )}
               </div>
             </div>
 
