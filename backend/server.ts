@@ -127,7 +127,7 @@ async function initializeDatabase() {
       DATABASE_URL
         ? { 
             connectionString: DATABASE_URL, 
-            ssl: { require: true } 
+            ssl: { rejectUnauthorized: false } 
           }
         : {
             host: PGHOST,
@@ -135,7 +135,7 @@ async function initializeDatabase() {
             user: PGUSER,
             password: PGPASSWORD,
             port: Number(PGPORT),
-            ssl: { require: true },
+            ssl: { rejectUnauthorized: false },
           }
     );
   }
@@ -173,7 +173,7 @@ const authenticateToken = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET) as { user_id: string; email: string };
     const result = await pool.query('SELECT user_id, email, name, created_at FROM users WHERE user_id = $1', [decoded.user_id]);
     
     if (result.rows.length === 0) {
@@ -564,8 +564,8 @@ app.patch('/api/tasks/:task_id', authenticateToken, async (req, res) => {
     const { task_name, due_date, is_complete } = validationResult.data;
 
     // Build dynamic update query for partial updates
-    const updates = [];
-    const params = [task_id];
+    const updates: string[] = [];
+    const params: any[] = [task_id];
     let paramCount = 1;
 
     if (task_name !== undefined) {
@@ -664,7 +664,7 @@ export { app, pool };
 // Start the server
 async function startServer() {
   await initializeDatabase();
-  app.listen(port, '0.0.0.0', () => {
+  app.listen(Number(port), '0.0.0.0', () => {
     console.log(`TodoGenie server running on port ${port} and listening on 0.0.0.0`);
   });
 }

@@ -5,7 +5,7 @@ import {
   createTaskInputSchema,
   updateTaskInputSchema,
   updateUserInputSchema
-} from './zodschemas.ts';
+} from './schema.js';
 
 const TEST_DB_URL = 'postgres://username:password@localhost/test_db';
 
