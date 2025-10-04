@@ -76,8 +76,10 @@ let pool: any;
 let db: PGlite;
 
 async function initializeDatabase() {
-  if (process.env.NODE_ENV === 'development') {
-    // Use PGlite for development testing
+  const isDevelopment = !process.env.DATABASE_URL && process.env.NODE_ENV === 'development';
+  
+  if (isDevelopment) {
+    console.log('Using PGlite for development...');
     db = new PGlite();
     
     // Initialize tables
@@ -122,7 +124,9 @@ async function initializeDatabase() {
         return await db.query(text, params);
       }
     };
+    console.log('Database initialized with PGlite');
   } else {
+    console.log('Using PostgreSQL for production...');
     pool = new Pool(
       DATABASE_URL
         ? { 
@@ -138,6 +142,14 @@ async function initializeDatabase() {
             ssl: { rejectUnauthorized: false },
           }
     );
+    
+    try {
+      await pool.query('SELECT NOW()');
+      console.log('Database connection successful');
+    } catch (error) {
+      console.error('Database connection failed:', error);
+      throw error;
+    }
   }
 }
 
@@ -150,11 +162,38 @@ const __dirname = path.dirname(__filename);
 const port = process.env.PORT || 3000;
 
 // Middleware setup
-app.use(morgan('combined')); // Log all requests for better dev experience
+app.use(morgan('combined'));
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:5173', 'https://123test-new.launchpulse.ai'];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
 app.use(express.json({ limit: "5mb" }));
 
 // Serve static files from the 'public' directory
@@ -195,9 +234,12 @@ const authenticateToken = async (req, res, next) => {
 */
 app.post('/api/auth/register', async (req, res) => {
   try {
+    console.log('Registration attempt:', { email: req.body?.email, hasPassword: !!req.body?.password, hasName: !!req.body?.name });
+    
     // Validate input using Zod schema
     const validationResult = createUserInputSchema.safeParse(req.body);
     if (!validationResult.success) {
+      console.error('Validation failed:', validationResult.error);
       return res.status(400).json(createErrorResponse('Validation failed', validationResult.error, 'VALIDATION_ERROR'));
     }
 
@@ -206,6 +248,7 @@ app.post('/api/auth/register', async (req, res) => {
     // Check if user already exists
     const existingUser = await pool.query('SELECT user_id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
     if (existingUser.rows.length > 0) {
+      console.log('User already exists:', email);
       return res.status(400).json(createErrorResponse('User with this email already exists', null, 'USER_ALREADY_EXISTS'));
     }
 
@@ -213,12 +256,15 @@ app.post('/api/auth/register', async (req, res) => {
     const user_id = uuidv4();
     const created_at = new Date().toISOString();
 
+    console.log('Creating user:', { user_id, email: email.toLowerCase().trim() });
+    
     const result = await pool.query(
       'INSERT INTO users (user_id, email, password_hash, name, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING user_id, email, name, created_at',
       [user_id, email.toLowerCase().trim(), password, name.trim(), created_at]
     );
 
     const user = result.rows[0];
+    console.log('User created successfully:', user.user_id);
 
     // Generate JWT token
     const auth_token = jwt.sign(
@@ -233,6 +279,8 @@ app.post('/api/auth/register', async (req, res) => {
       'INSERT INTO auth_tokens (token_id, user_id, auth_token, created_at) VALUES ($1, $2, $3, $4)',
       [token_id, user.user_id, auth_token, created_at]
     );
+
+    console.log('Registration successful for user:', user.email);
 
     res.status(201).json({
       user: {
@@ -647,8 +695,36 @@ app.delete('/api/tasks/:task_id', authenticateToken, async (req, res) => {
   Health Check Endpoint
   Simple endpoint to verify server is running
 */
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/api/health', async (req, res) => {
+  try {
+    let dbStatus = 'unknown';
+    try {
+      await pool.query('SELECT 1');
+      dbStatus = 'connected';
+    } catch (dbError) {
+      dbStatus = 'disconnected';
+      console.error('Database health check failed:', dbError);
+    }
+    
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      database: dbStatus,
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error', 
+      timestamp: new Date().toISOString(),
+      message: 'Health check failed'
+    });
+  }
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json(createErrorResponse('Internal server error', err, 'UNHANDLED_ERROR'));
 });
 
 // Serve static files from Vite build

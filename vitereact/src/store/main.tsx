@@ -2,6 +2,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import axios from 'axios';
 
+const API_TIMEOUT = 30000;
+
+const axiosInstance = axios.create({
+  timeout: API_TIMEOUT,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 interface User {
   id: string;
   email: string;
@@ -55,10 +64,12 @@ export const useAppStore = create<AppState>()(
       }));
 
       try {
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/auth/login`,
-          { email, password },
-          { headers: { 'Content-Type': 'application/json' } }
+        const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        console.log('Logging in at:', `${apiUrl}/api/auth/login`);
+        
+        const response = await axiosInstance.post(
+          `${apiUrl}/api/auth/login`,
+          { email, password }
         );
 
         const { user, token } = response.data;
@@ -75,7 +86,19 @@ export const useAppStore = create<AppState>()(
           },
         }));
       } catch (error: any) {
-        const errorMessage = error.response?.data?.message || error.message || 'Login failed';
+        console.error('Login error:', error);
+        
+        let errorMessage = 'Login failed';
+        
+        if (error.code === 'ECONNABORTED') {
+          errorMessage = 'Request timeout. Please check your connection and try again.';
+        } else if (error.code === 'ERR_NETWORK') {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else if (error.response) {
+          errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
 
         set(() => ({
           authentication_state: {
@@ -105,10 +128,12 @@ export const useAppStore = create<AppState>()(
       }));
 
       try {
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/auth/register`,
-          { email, password, name },
-          { headers: { 'Content-Type': 'application/json' } }
+        const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        console.log('Registering user at:', `${apiUrl}/api/auth/register`);
+        
+        const response = await axiosInstance.post(
+          `${apiUrl}/api/auth/register`,
+          { email, password, name }
         );
 
         const { user, token } = response.data;
@@ -125,7 +150,19 @@ export const useAppStore = create<AppState>()(
           },
         }));
       } catch (error: any) {
-        const errorMessage = error.response?.data?.message || error.message || 'Registration failed';
+        console.error('Registration error:', error);
+        
+        let errorMessage = 'Registration failed';
+        
+        if (error.code === 'ECONNABORTED') {
+          errorMessage = 'Request timeout. Please check your connection and try again.';
+        } else if (error.code === 'ERR_NETWORK') {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else if (error.response) {
+          errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
 
         set(() => ({
           authentication_state: {
@@ -160,8 +197,10 @@ export const useAppStore = create<AppState>()(
       }
 
       try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/auth/verify`,
+        const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        
+        const response = await axiosInstance.get(
+          `${apiUrl}/api/auth/verify`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -178,7 +217,8 @@ export const useAppStore = create<AppState>()(
             error_message: null,
           },
         }));
-      } catch {
+      } catch (error) {
+        console.error('Auth verification failed:', error);
         set(() => ({
           authentication_state: {
             current_user: null,
